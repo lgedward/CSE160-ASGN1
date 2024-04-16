@@ -23,6 +23,10 @@ function setupWebGL(){
      console.log('Failed to get the rendering context for WebGL');
      return;
    }
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
 }
 
 function connectVariablesToGLSL(){
@@ -89,19 +93,97 @@ function sendTextToHTML(text, htmlID){
   htmlElm.innerHTML = text;
 }
 
+const POINT = 0;
+const TRIANGLE = 1;
+const CIRCLE = 2;
+
 let g_selectedColor=[1.0,1.0,1.0,1.0];
 let g_selectedSize=5;
+let g_selectedType=POINT;
 
 function addActionsForHtmlUI(){
-  document.getElementById('green').onclick = function() { g_selectedColor = [0.0, 1.0, 0.0, 0.0]; };
-  document.getElementById('red').onclick = function() { g_selectedColor = [1.0, 0.0, 0.0, 0.0]; };
+  document.getElementById('green').onclick = function() { g_selectedColor = [0.0, 1.0, 0.0, 1.0]; };
+  document.getElementById('red').onclick = function() { g_selectedColor = [1.0, 0.0, 0.0, 1.0]; };
   document.getElementById('clearButton').onclick = function() {g_shapesList=[]; renderAllShapes();};
+
+  document.getElementById('pointButton').onclick = function() {g_selectedType=POINT};
+  document.getElementById('triButton').onclick = function() {g_selectedType=TRIANGLE};
+  document.getElementById('circleButton').onclick = function() {g_selectedType=CIRCLE};
 
   document.getElementById('redSlide').addEventListener('mouseup', function() { g_selectedColor[0] = this.value/100; });
   document.getElementById('greenSlide').addEventListener('mouseup', function() { g_selectedColor[1] = this.value/100; });
   document.getElementById('blueSlide').addEventListener('mouseup', function() { g_selectedColor[2] = this.value/100; });
 
   document.getElementById('sizeSlide').addEventListener('mouseup', function() { g_selectedSize = this.value; });
+
+  document.getElementById('drawTrianglesButton').onclick = drawPredefinedTriangles;
+
+  document.getElementById('alphaSlide').addEventListener('mouseup', function() {g_selectedColor[3] = this.value / 100;});
+}
+
+function createTriangle(x1, y1, x2, y2, x3, y3, color) {
+  return {
+      position: [x1, y1, x2, y2, x3, y3],
+      color: color
+  };
+}
+
+var predefinedTriangles = []
+
+predefinedTriangles.push(createTriangle(-0.5, -0.3, -0.2, 0.4, 0.1, -0.3, [0.42, 0.26, 0.15, 1.0]));
+predefinedTriangles.push(createTriangle(-0.2, -0.3, -0.2, 0.4, 0.5, -0.3, [0.42, 0.26, 0.15, 1.0]));
+
+predefinedTriangles.push(createTriangle(0.0, -0.3, 0.3, 0.5, 0.6, -0.3, [0.36, 0.25, 0.20, 1.0]));
+predefinedTriangles.push(createTriangle(0.3, -0.3, 0.3, 0.5, 0.8, -0.3, [0.36, 0.25, 0.20, 1.0]));
+
+const sunCenterX = 0.0;
+const sunCenterY = 0.7;
+const sunRadius = 0.2;
+const sunColor = [1.0, 0.9, 0.0, 1.0];
+
+for (let i = 0; i < 8; i++) {
+    let angle = i * (Math.PI / 4);
+    predefinedTriangles.push(createTriangle(
+        sunCenterX + sunRadius * Math.cos(angle),
+        sunCenterY + sunRadius * Math.sin(angle),
+        sunCenterX + sunRadius * Math.cos(angle + Math.PI / 4),
+        sunCenterY + sunRadius * Math.sin(angle + Math.PI / 4),
+        sunCenterX,
+        sunCenterY,
+        sunColor
+    ));
+}
+
+predefinedTriangles.push(createTriangle(-1.0, -0.3, 1.0, -0.3, -1.0, -1.0, [0.0, 0.5, 0.0, 1.0]));
+predefinedTriangles.push(createTriangle(1.0, -0.3, 1.0, -1.0, -1.0, -1.0, [0.0, 0.5, 0.0, 1.0]));
+
+predefinedTriangles.push(createTriangle(-0.45, 0.1, -0.35, 0.3, -0.25, 0.1, [1.0, 1.0, 1.0, 1.0]));
+predefinedTriangles.push(createTriangle(-0.15, 0.1, -0.05, 0.3, 0.05, 0.1, [1.0, 1.0, 1.0, 1.0]));
+
+predefinedTriangles.push(createTriangle(0.15, 0.2, 0.25, 0.4, 0.35, 0.2, [1.0, 1.0, 1.0, 1.0]));
+predefinedTriangles.push(createTriangle(0.45, 0.2, 0.55, 0.4, 0.65, 0.2, [1.0, 1.0, 1.0, 1.0]));
+
+predefinedTriangles.push(createTriangle(-0.1, 0.6, 0.0, 0.65, 0.1, 0.6, [0.0, 0.0, 0.0, 1.0]));
+predefinedTriangles.push(createTriangle(0.0, 0.5, 0.1, 0.55, 0.2, 0.5, [0.0, 0.0, 0.0, 1.0]));
+
+predefinedTriangles.push(createTriangle(-0.3, -0.8, 0.0, -0.3, 0.3, -0.8, [0.0, 0.5, 1.0, 1.0]));
+predefinedTriangles.push(createTriangle(-0.3, -0.8, 0.3, -0.8, 0.0, -1.0, [0.0, 0.5, 1.0, 1.0]));
+
+predefinedTriangles.push(createTriangle(-0.8, -0.3, -0.7, -0.1, -0.6, -0.3, [0.0, 0.6, 0.0, 1.0]));
+predefinedTriangles.push(createTriangle(-0.6, -0.3, -0.5, 0.0, -0.4, -0.3, [0.0, 0.7, 0.0, 1.0]));
+predefinedTriangles.push(createTriangle(-0.9, -0.6, -0.8, -0.4, -0.7, -0.6, [0.0, 0.8, 0.0, 1.0]));
+
+predefinedTriangles.push(createTriangle(0.2, -0.7, 0.3, -0.6, 0.4, -0.7, [0.5, 0.5, 0.5, 1.0]));
+
+function drawPredefinedTriangles() {
+  predefinedTriangles.forEach(tri => {
+      let triangle = new Triangle();
+      triangle.position = tri.position;
+      triangle.color = tri.color;
+      triangle.size = g_selectedSize;
+      g_shapesList.push(triangle);
+  });
+  renderAllShapes();
 }
 
 function main() {
@@ -131,7 +213,16 @@ var g_shapesList = [];
 function click(ev) {
   let [x,y] = convertCoordinatesEventToGL(ev);
 
-  let point = new Point();
+  
+
+  let point;
+  if(g_selectedType==POINT){
+    point = new Point();
+  } else if(g_selectedType==TRIANGLE){
+    point = new Triangle();
+  } else {
+    point = new Circle();
+  }
   point.position=[x,y];
   point.color=g_selectedColor.slice();
   point.size=g_selectedSize;
